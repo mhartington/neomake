@@ -8,7 +8,7 @@ function! neomake#makers#ft#text#proselint() abort
                 \ }
 endfunction
 
-function! neomake#makers#ft#markdown#writegood() abort
+function! neomake#makers#ft#text#writegood() abort
     return {
                 \ 'args': ['--parse'],
                 \ 'errorformat': '%W%f:%l:%c:%m'
