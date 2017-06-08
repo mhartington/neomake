@@ -199,6 +199,13 @@ function! s:jobinfo_base.get_pid() abort
     endtry
 endfunction
 
+function! neomake#process_async(entries, jobinfo) abort
+    if !empty(a:entries)
+        call s:ProcessEntries(a:jobinfo, a:entries)
+    endif
+    call s:CleanJobinfo(a:jobinfo)
+endfunction
+
 function! s:MakeJob(make_id, options) abort
     let job_id = s:job_id
     let s:job_id += 1
@@ -222,16 +229,23 @@ function! s:MakeJob(make_id, options) abort
 
     if has_key(maker, 'get_list_entries')
         let jobinfo.serialize = 0
-        call neomake#utils#LoudMessage(printf(
-                    \ '%s: getting entries via get_list_entries.',
-                    \ maker.name), jobinfo)
-        let entries = maker.get_list_entries(jobinfo)
-        if type(entries) != type([])
-            call neomake#utils#ErrorMessage(printf('The get_list_entries method for maker %s did not return a list, but: %s.', jobinfo.maker.name, string(entries)[:100]), jobinfo)
+
+        if maker['is_async']
+            " is async
+            call maker.get_list_entries(jobinfo)
         else
-            call s:ProcessEntries(jobinfo, entries)
+            " is not async
+            call neomake#utils#LoudMessage(printf(
+                        \ '%s: getting entries via get_list_entries.',
+                        \ maker.name), jobinfo)
+            let entries = maker.get_list_entries(jobinfo)
+            if type(entries) != type([])
+                call neomake#utils#ErrorMessage(printf('The get_list_entries method for maker %s did not return a list, but: %s.', jobinfo.maker.name, string(entries)[:100]), jobinfo)
+            else
+                call s:ProcessEntries(jobinfo, entries)
+            endif
+            call s:CleanJobinfo(jobinfo)
         endif
-        call s:CleanJobinfo(jobinfo)
         return jobinfo
     endif
 
