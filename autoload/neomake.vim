@@ -134,6 +134,14 @@ function! neomake#CancelAllMakes(...) abort
     endfor
 endfunction
 
+function! neomake#process_remote_maker(entries, jobinfo) abort
+    if !empty(a:entries)
+        call s:ProcessEntries(a:jobinfo, a:entries)
+    endif
+    call s:CleanJobinfo(a:jobinfo)
+endfunction
+
+
 " Remove any queued actions for a jobinfo or make_info object.
 function! s:clean_action_queue(job_or_make_info) abort
     let removed = 0
@@ -257,13 +265,25 @@ function! s:handle_get_list_entries(jobinfo, ...) abort
         return 1
     endtry
 
-    if type(entries) != type([])
+    if type(entries) == type({})
+        " returns from async remote function
+        call neomake#utils#LoudMessage(printf(
+                    \ '%s: getting entries via remote plugin.',
+                    \ maker.name), jobinfo)
+
+	elseif type(entries) != type([])
         call neomake#utils#ErrorMessage(printf('The get_list_entries method for maker %s did not return a list, but: %s.', jobinfo.maker.name, string(entries)[:100]), jobinfo)
+
+
     elseif !empty(entries) && type(entries[0]) != type({})
         call neomake#utils#ErrorMessage(printf('The get_list_entries method for maker %s did not return a list of dicts, but: %s.', jobinfo.maker.name, string(entries)[:100]), jobinfo)
+
+
     else
         call s:ProcessEntries(jobinfo, entries)
+
     endif
+
     call s:CleanJobinfo(jobinfo)
     return 1
 endfunction
@@ -320,6 +340,8 @@ function! s:MakeJob(make_id, options) abort
         call neomake#utils#LoudMessage(printf(
                     \ '%s: getting entries via get_list_entries.',
                     \ maker.name), jobinfo)
+
+
         let jobinfo.serialize = 1
         call s:handle_get_list_entries(jobinfo)
         return jobinfo
